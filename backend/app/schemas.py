@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -80,6 +80,11 @@ class BotOut(BaseModel):
         from_attributes = True
 
 
+class BotCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=80)
+    persona: str = Field(..., min_length=1, max_length=200)
+
+
 class GroupBotOut(BaseModel):
     bot_id: int
     name: str
@@ -91,10 +96,11 @@ class GroupCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=200)
     bot_ids: Optional[List[int]] = None
     bot_systems: Optional[Dict[int, str]] = None
+    bots: Optional[List[BotCreate]] = None
 
 
-class GroupBotUpdate(BaseModel):
-    system_prompt: Optional[str] = None
+class GroupUpdate(BaseModel):
+    title: Optional[str] = None
 
 
 class GroupOut(BaseModel):

@@ -1,5 +1,4 @@
-from datetime import datetime
-import random
+﻿from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple
 
@@ -34,7 +33,6 @@ from .schemas import (
     ConversationOut,
     ConversationUpdate,
     GroupBotOut,
-    GroupBotUpdate,
     GroupCreate,
     GroupDetail,
     GroupMemberAdd,
@@ -42,6 +40,7 @@ from .schemas import (
     GroupMessageResponse,
     GroupMessageOut,
     GroupOut,
+    GroupUpdate,
     MessageCreate,
     MessageOut,
     TagOut,
@@ -55,7 +54,7 @@ app = FastAPI(title="Chat Backend", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -90,10 +89,10 @@ def seed_bots() -> None:
     try:
         if db.query(Bot).count() == 0:
             bots = [
-                Bot(name="CustomerBot", persona="Helpful customer support"),
-                Bot(name="TechBot", persona="Technical and precise"),
-                Bot(name="HumorBot", persona="Light humor and friendly"),
-                Bot(name="FallbackBot", persona="Short neutral fallback"),
+                Bot(name="CustomerBot", persona="客服机器人"),
+                Bot(name="TechBot", persona="技术机器人"),
+                Bot(name="HumorBot", persona="幽默机器人"),
+                Bot(name="FallbackBot", persona="通用机器人"),
             ]
             db.add_all(bots)
             db.commit()
@@ -304,6 +303,11 @@ def create_group(
     db.add(member)
 
     bot_ids = payload.bot_ids
+    if payload.bots:
+        bot_ids = []
+        for bot_data in payload.bots:
+            bot = _get_or_create_bot(db, bot_data.name, bot_data.persona)
+            bot_ids.append(bot.id)
     if not bot_ids:
         bot_ids = [bot.id for bot in db.query(Bot).filter(Bot.is_active.is_(True)).all()]
     if not bot_ids:
@@ -311,11 +315,45 @@ def create_group(
 
     bot_systems = payload.bot_systems or {}
     for bot_id in bot_ids:
-        db.add(GroupBot(group_id=group.id, bot_id=bot_id, system_prompt=bot_systems.get(bot_id)))
+        bot = db.query(Bot).filter(Bot.id == bot_id).first()
+        system_prompt = bot_systems.get(bot_id)
+        if bot and not system_prompt:
+            system_prompt = f"{bot.name}：{bot.persona}"
+        db.add(GroupBot(group_id=group.id, bot_id=bot_id, system_prompt=system_prompt))
 
     db.commit()
     db.refresh(group)
     return _build_group_detail(db, group)
+
+
+@app.patch("/groups/{group_id}", response_model=GroupOut)
+def update_group(
+    group_id: int,
+    payload: GroupUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    group = _get_group_or_404(db, group_id, current_user.id)
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only owner can update group")
+    if payload.title is not None:
+        group.title = payload.title
+        db.commit()
+    return GroupOut.model_validate(group)
+
+
+@app.delete("/groups/{group_id}")
+def delete_group(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    group = _get_group_or_404(db, group_id, current_user.id)
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only owner can delete group")
+    db.delete(group)
+    db.commit()
+    return {"status": "deleted"}
 
 
 @app.get("/groups", response_model=List[GroupOut])
@@ -331,16 +369,6 @@ def list_groups(
         .all()
     )
     return [GroupOut.model_validate(group) for group in groups]
-
-
-@app.get("/groups/{group_id}", response_model=GroupDetail)
-def get_group_detail(
-    group_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    group = _get_group_or_404(db, group_id, current_user.id)
-    return _build_group_detail(db, group)
 
 
 @app.get("/groups/{group_id}/bots", response_model=List[GroupBotOut])
@@ -366,35 +394,6 @@ def list_group_bots(
         )
         for link, bot in rows
     ]
-
-
-@app.patch("/groups/{group_id}/bots/{bot_id}", response_model=GroupBotOut)
-def update_group_bot(
-    group_id: int,
-    bot_id: int,
-    payload: GroupBotUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    group = _get_group_or_404(db, group_id, current_user.id)
-    if group.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only owner can update bots")
-
-    link = (
-        db.query(GroupBot)
-        .filter(GroupBot.group_id == group_id, GroupBot.bot_id == bot_id)
-        .first()
-    )
-    if not link:
-        raise HTTPException(status_code=404, detail="Bot not found in group")
-
-    link.system_prompt = payload.system_prompt
-    db.commit()
-
-    bot = db.query(Bot).filter(Bot.id == bot_id).first()
-    if not bot:
-        raise HTTPException(status_code=404, detail="Bot not found")
-    return GroupBotOut(bot_id=bot.id, name=bot.name, persona=bot.persona, system_prompt=link.system_prompt)
 
 
 @app.post("/groups/{group_id}/members")
@@ -423,29 +422,6 @@ def add_group_member(
     db.add(GroupMember(group_id=group.id, user_id=user.id, role="member"))
     db.commit()
     return {"status": "added"}
-
-
-@app.delete("/groups/{group_id}/members/{user_id}")
-def remove_group_member(
-    group_id: int,
-    user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    group = _get_group_or_404(db, group_id, current_user.id)
-    if group.owner_id != current_user.id and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="Not allowed")
-
-    member = (
-        db.query(GroupMember)
-        .filter(GroupMember.group_id == group.id, GroupMember.user_id == user_id)
-        .first()
-    )
-    if not member:
-        raise HTTPException(status_code=404, detail="Member not found")
-    db.delete(member)
-    db.commit()
-    return {"status": "removed"}
 
 
 @app.post("/groups/{group_id}/messages", response_model=GroupMessageResponse)
@@ -518,6 +494,17 @@ def list_group_messages(
         .all()
     )
     return [GroupMessageOut.model_validate(msg) for msg in messages]
+
+
+def _get_or_create_bot(db: Session, name: str, persona: str) -> Bot:
+    bot = db.query(Bot).filter(Bot.name == name).first()
+    if bot:
+        return bot
+    bot = Bot(name=name, persona=persona)
+    db.add(bot)
+    db.commit()
+    db.refresh(bot)
+    return bot
 
 
 def _get_conversation_or_404(db: Session, conversation_id: int, user_id: int) -> Conversation:
@@ -637,6 +624,7 @@ def _select_bots_for_reply(rows: List[Tuple[GroupBot, Bot]]) -> List[Tuple[Group
         return []
     strategy = AI_REPLY_STRATEGY.lower()
     if strategy == "random":
+        import random
         return [random.choice(rows)]
     return rows
 
