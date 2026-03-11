@@ -1,146 +1,101 @@
 ﻿<!doctype html>
 <html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>聊天后台控制台</title>
+    <style>
+      :root {
+        --bg: #f2ede4;
+        --card: #fff6e8;
+        --border: #d9c8aa;
+        --text: #2f2b26;
+        --accent: #7a5c2e;
+      }
+      body {
+        font-family: "Georgia", serif;
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+      }
+      .wrap { max-width: 1200px; margin: 0 auto; }
+      .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+      .tab { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: #f7ecd8; cursor: pointer; }
+      .tab.active { background: var(--accent); color: #fff; }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+      h1, h2, h3 { margin: 0 0 12px 0; }
+      label { display: block; margin-top: 8px; font-size: 14px; }
+      input, textarea, select {
+        width: 100%;
+        margin-top: 6px;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #fff;
+      }
+      button {
+        margin-top: 10px;
+        padding: 10px 14px;
+        border: none;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+      }
+      .row { display: flex; gap: 10px; align-items: center; }
+      .row > * { flex: 1; }
+      .list { max-height: 240px; overflow: auto; padding: 8px; background: #f0e6d6; border-radius: 8px; }
+      .list-item { padding: 6px; border-bottom: 1px solid #e2d2bd; }
+      .list-item button { margin-left: 8px; }
+      pre { background: #f0e6d6; padding: 10px; border-radius: 8px; overflow: auto; }
+      .small { font-size: 12px; color: #6b5a40; }
+      .hidden { display: none; }
+      .error { color: #b04b3c; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>聊天后台控制台</h1>
 
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Chat Backend 控制台</title>
-  <style>
-    :root {
-      --bg: #f3efe8;
-      --card: #fff8ee;
-      --border: #d9c8aa;
-      --text: #2f2b26;
-      --accent: #7a5c2e;
-    }
-
-    body {
-      font-family: "Georgia", serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 20px;
-    }
-
-    .wrap {
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-    }
-
-    h1,
-    h2 {
-      margin: 0 0 12px 0;
-    }
-
-    label {
-      display: block;
-      margin-top: 8px;
-      font-size: 14px;
-    }
-
-    input,
-    textarea {
-      width: 100%;
-      margin-top: 6px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #fff;
-    }
-
-    button {
-      margin-top: 10px;
-      padding: 10px 14px;
-      border: none;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #fff;
-      cursor: pointer;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .row>* {
-      flex: 1;
-    }
-
-    .list {
-      max-height: 240px;
-      overflow: auto;
-      padding: 8px;
-      background: #f0e6d6;
-      border-radius: 8px;
-    }
-
-    .list button {
-      margin-top: 4px;
-    }
-
-    pre {
-      background: #f0e6d6;
-      padding: 10px;
-      border-radius: 8px;
-      overflow: auto;
-    }
-
-    .small {
-      font-size: 12px;
-      color: #6b5a40;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="wrap">
-    <h1>Chat Backend 控制台</h1>
-    <div class="card">
-      <div class="row">
-        <div>
-          <label>API Base URL</label>
-          <input id="baseUrl" placeholder="留空使用当前域名" />
-        </div>
-        <div>
-          <label>Token</label>
-          <input id="token" placeholder="自动保存" />
-        </div>
+      <div class="tabs">
+        <div class="tab active" data-tab="auth">登录/注册</div>
+        <div class="tab" data-tab="personal">个人对话</div>
+        <div class="tab" data-tab="group">群组对话</div>
       </div>
-      <div class="row">
-        <button onclick="registerUser()">注册</button>
-        <button onclick="loginUser()">登录</button>
-        <button onclick="loadBots()">加载机器人</button>
-      </div>
-      <div class="row">
-        <div>
-          <label>用户名</label>
-          <input id="username" placeholder="test1" />
-        </div>
-        <div>
-          <label>密码</label>
-          <input id="password" type="password" placeholder="test1234" />
-        </div>
-      </div>
-      <p class="small">Token 会保存到浏览器 localStorage。</p>
-    </div>
 
-    <div class="grid" style="margin-top: 16px;">
-      <div class="card">
+      <div id="auth" class="card">
+        <h2>登录与注册</h2>
+        <div class="row">
+          <div>
+            <label>API Base URL</label>
+            <input id="baseUrl" placeholder="留空使用当前域名" />
+          </div>
+          <div>
+            <label>Token</label>
+            <input id="token" placeholder="登录后自动保存" />
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>用户名</label>
+            <input id="username" placeholder="test1" />
+          </div>
+          <div>
+            <label>密码</label>
+            <input id="password" type="password" placeholder="test1234" />
+          </div>
+        </div>
+        <div class="row">
+          <button onclick="registerUser()">注册</button>
+          <button onclick="loginUser()">登录</button>
+        </div>
+        <p class="small">登录成功后 Token 会保存到浏览器 localStorage。</p>
+        <pre id="authOutput"></pre>
+      </div>
+
+      <div id="personal" class="card hidden">
         <h2>个人对话</h2>
         <div class="row">
           <button onclick="listConversations()">刷新列表</button>
@@ -149,7 +104,13 @@
         <label>新对话标题</label>
         <input id="convTitle" placeholder="New Conversation" />
         <label>标签（逗号分隔）</label>
-        <input id="convTags" placeholder="work,study" />
+        <input id="convTags" placeholder="工作,学习,创意" />
+
+        <label>筛选标签（逗号分隔）</label>
+        <div class="row">
+          <input id="convFilter" placeholder="例如：工作,学习" />
+          <button onclick="listConversations()">筛选</button>
+        </div>
 
         <h3>对话列表</h3>
         <div id="convList" class="list"></div>
@@ -161,7 +122,7 @@
           <button onclick="updateConversation()">更新标题/标签</button>
         </div>
 
-        <h3>消息</h3>
+        <h3>对话消息</h3>
         <textarea id="message" rows="3" placeholder="输入消息"></textarea>
         <div class="row">
           <button onclick="sendMessage()">发送</button>
@@ -170,7 +131,7 @@
         <pre id="messageOutput"></pre>
       </div>
 
-      <div class="card">
+      <div id="group" class="card hidden">
         <h2>群组对话</h2>
         <div class="row">
           <button onclick="listGroups()">刷新群组</button>
@@ -180,6 +141,8 @@
         <input id="groupTitle" placeholder="Team Chat" />
         <label>机器人 ID（逗号分隔，可空）</label>
         <input id="groupBots" placeholder="1,2" />
+        <label>机器人 System（每行：bot_id=system 内容）</label>
+        <textarea id="groupBotSystems" rows="3" placeholder="1=你是客服\n2=你是技术专家"></textarea>
 
         <h3>群组列表</h3>
         <div id="groupList" class="list"></div>
@@ -190,257 +153,337 @@
         <input id="memberUsername" placeholder="test2" />
         <div class="row">
           <button onclick="addMember()">添加成员</button>
+          <button onclick="loadGroupBots()">加载群组机器人</button>
           <button onclick="listGroupMessages()">加载群组消息</button>
         </div>
+
+        <h3>群组机器人 System 设置</h3>
+        <div id="groupBotList" class="list"></div>
 
         <h3>群组消息</h3>
         <textarea id="groupMessage" rows="3" placeholder="输入群组消息"></textarea>
         <button onclick="sendGroupMessage()">发送群组消息</button>
         <pre id="groupOutput"></pre>
       </div>
+
+      <div class="card" style="margin-top: 16px;">
+        <h2>调试输出</h2>
+        <pre id="output"></pre>
+      </div>
     </div>
 
-    <div class="card" style="margin-top: 16px;">
-      <h2>调试输出</h2>
-      <pre id="output"></pre>
-    </div>
-  </div>
+    <script>
+      const tokenInput = document.getElementById('token');
+      const baseInput = document.getElementById('baseUrl');
 
-  <script>
-    const tokenInput = document.getElementById('token');
-    const baseInput = document.getElementById('baseUrl');
+      function baseUrl() {
+        const val = baseInput.value.trim();
+        if (val) return val;
+        return window.location.origin;
+      }
 
-    function baseUrl() {
-      const val = baseInput.value.trim();
-      if (val) return val;
-      return window.location.origin;
-    }
+      function setToken(token) {
+        tokenInput.value = token;
+        localStorage.setItem('token', token);
+      }
 
-    function setToken(token) {
-      tokenInput.value = token;
-      localStorage.setItem('token', token);
-    }
+      function getToken() {
+        return tokenInput.value.trim();
+      }
 
-    function getToken() {
-      return tokenInput.value.trim();
-    }
+      function authHeaders() {
+        return {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+        };
+      }
 
-    function authHeaders() {
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`,
-      };
-    }
+      function show(outputId, data) {
+        document.getElementById(outputId).textContent = JSON.stringify(data, null, 2);
+      }
 
-    function show(outputId, data) {
-      document.getElementById(outputId).textContent = JSON.stringify(data, null, 2);
-    }
+      async function request(path, options = {}) {
+        const res = await fetch(`${baseUrl()}${path}`, options);
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch { data = { raw: text }; }
+        if (!res.ok) throw data;
+        return data;
+      }
 
-    async function request(path, options = {}) {
-      const res = await fetch(`${baseUrl()}${path}`, options);
-      const text = await res.text();
-      let data;
-      try { data = JSON.parse(text); } catch { data = { raw: text }; }
-      if (!res.ok) throw data;
-      return data;
-    }
+      function requireToken() {
+        if (!getToken()) {
+          show('output', { error: '请先登录获取 Token' });
+          throw new Error('token missing');
+        }
+      }
 
-    async function registerUser() {
-      try {
-        const data = await request('/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: document.getElementById('username').value.trim(),
-            password: document.getElementById('password').value.trim(),
-          }),
+      async function registerUser() {
+        try {
+          const data = await request('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: document.getElementById('username').value.trim(),
+              password: document.getElementById('password').value.trim(),
+            }),
+          });
+          setToken(data.access_token);
+          show('authOutput', data);
+        } catch (err) { show('authOutput', err); }
+      }
+
+      async function loginUser() {
+        try {
+          const data = await request('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: document.getElementById('username').value.trim(),
+              password: document.getElementById('password').value.trim(),
+            }),
+          });
+          setToken(data.access_token);
+          show('authOutput', data);
+        } catch (err) { show('authOutput', err); }
+      }
+
+      async function createConversation() {
+        try {
+          requireToken();
+          const tags = document.getElementById('convTags').value.trim();
+          const data = await request('/conversations', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              title: document.getElementById('convTitle').value.trim() || null,
+              tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+            }),
+          });
+          show('output', data);
+          listConversations();
+        } catch (err) { show('output', err); }
+      }
+
+      async function listConversations() {
+        try {
+          requireToken();
+          const filterTags = document.getElementById('convFilter').value.trim();
+          const query = filterTags ? `?tags=${encodeURIComponent(filterTags)}` : '';
+          const data = await request(`/conversations${query}`, { headers: authHeaders() });
+          const list = document.getElementById('convList');
+          list.innerHTML = '';
+          data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.textContent = `${item.id} - ${item.title} [${item.tags.map(t => t.name).join(',')}]`;
+            const btn = document.createElement('button');
+            btn.textContent = '选择';
+            btn.onclick = () => document.getElementById('conversationId').value = item.id;
+            div.appendChild(btn);
+            list.appendChild(div);
+          });
+          show('output', data);
+        } catch (err) { show('output', err); }
+      }
+
+      async function updateConversation() {
+        try {
+          requireToken();
+          const id = document.getElementById('conversationId').value.trim();
+          const tags = document.getElementById('convTags').value.trim();
+          const data = await request(`/conversations/${id}`, {
+            method: 'PATCH',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              title: document.getElementById('convTitle').value.trim() || null,
+              tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+            }),
+          });
+          show('output', data);
+          listConversations();
+        } catch (err) { show('output', err); }
+      }
+
+      async function deleteConversation() {
+        try {
+          requireToken();
+          const id = document.getElementById('conversationId').value.trim();
+          const data = await request(`/conversations/${id}`, {
+            method: 'DELETE',
+            headers: authHeaders(),
+          });
+          show('output', data);
+          listConversations();
+        } catch (err) { show('output', err); }
+      }
+
+      async function sendMessage() {
+        try {
+          requireToken();
+          const id = document.getElementById('conversationId').value.trim();
+          const data = await request(`/conversations/${id}/messages`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ content: document.getElementById('message').value.trim() }),
+          });
+          show('messageOutput', data);
+        } catch (err) { show('messageOutput', err); }
+      }
+
+      async function listMessages() {
+        try {
+          requireToken();
+          const id = document.getElementById('conversationId').value.trim();
+          const data = await request(`/conversations/${id}/messages`, {
+            headers: authHeaders(),
+          });
+          show('messageOutput', data);
+        } catch (err) { show('messageOutput', err); }
+      }
+
+      function parseBotSystems(text) {
+        const systems = {};
+        const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+        lines.forEach(line => {
+          const idx = line.indexOf('=');
+          if (idx === -1) return;
+          const key = parseInt(line.slice(0, idx).trim(), 10);
+          const val = line.slice(idx + 1).trim();
+          if (Number.isFinite(key) && val) systems[key] = val;
         });
-        setToken(data.access_token);
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
+        return systems;
+      }
 
-    async function loginUser() {
-      try {
-        const data = await request('/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: document.getElementById('username').value.trim(),
-            password: document.getElementById('password').value.trim(),
-          }),
+      async function createGroup() {
+        try {
+          requireToken();
+          const botsRaw = document.getElementById('groupBots').value.trim();
+          const botIds = botsRaw ? botsRaw.split(',').map(v => parseInt(v.trim(), 10)).filter(Number.isFinite) : null;
+          const botSystems = parseBotSystems(document.getElementById('groupBotSystems').value);
+          const data = await request('/groups', {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+              title: document.getElementById('groupTitle').value.trim(),
+              bot_ids: botIds,
+              bot_systems: Object.keys(botSystems).length ? botSystems : null,
+            }),
+          });
+          show('output', data);
+          listGroups();
+        } catch (err) { show('output', err); }
+      }
+
+      async function listGroups() {
+        try {
+          requireToken();
+          const data = await request('/groups', { headers: authHeaders() });
+          const list = document.getElementById('groupList');
+          list.innerHTML = '';
+          data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            div.textContent = `${item.id} - ${item.title}`;
+            const btn = document.createElement('button');
+            btn.textContent = '选择';
+            btn.onclick = () => document.getElementById('groupId').value = item.id;
+            div.appendChild(btn);
+            list.appendChild(div);
+          });
+          show('output', data);
+        } catch (err) { show('output', err); }
+      }
+
+      async function addMember() {
+        try {
+          requireToken();
+          const groupId = document.getElementById('groupId').value.trim();
+          const data = await request(`/groups/${groupId}/members`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ username: document.getElementById('memberUsername').value.trim() }),
+          });
+          show('output', data);
+        } catch (err) { show('output', err); }
+      }
+
+      async function loadGroupBots() {
+        try {
+          requireToken();
+          const groupId = document.getElementById('groupId').value.trim();
+          const data = await request(`/groups/${groupId}/bots`, { headers: authHeaders() });
+          const list = document.getElementById('groupBotList');
+          list.innerHTML = '';
+          data.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'list-item';
+            const title = document.createElement('div');
+            title.textContent = `${item.bot_id} - ${item.name} (${item.persona})`;
+            const textarea = document.createElement('textarea');
+            textarea.rows = 2;
+            textarea.value = item.system_prompt || '';
+            const btn = document.createElement('button');
+            btn.textContent = '保存 System';
+            btn.onclick = async () => {
+              try {
+                const res = await request(`/groups/${groupId}/bots/${item.bot_id}`, {
+                  method: 'PATCH',
+                  headers: authHeaders(),
+                  body: JSON.stringify({ system_prompt: textarea.value.trim() || null }),
+                });
+                show('output', res);
+              } catch (err) { show('output', err); }
+            };
+            div.appendChild(title);
+            div.appendChild(textarea);
+            div.appendChild(btn);
+            list.appendChild(div);
+          });
+          show('output', data);
+        } catch (err) { show('output', err); }
+      }
+
+      async function sendGroupMessage() {
+        try {
+          requireToken();
+          const groupId = document.getElementById('groupId').value.trim();
+          const data = await request(`/groups/${groupId}/messages`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({ content: document.getElementById('groupMessage').value.trim() }),
+          });
+          show('groupOutput', data);
+        } catch (err) { show('groupOutput', err); }
+      }
+
+      async function listGroupMessages() {
+        try {
+          requireToken();
+          const groupId = document.getElementById('groupId').value.trim();
+          const data = await request(`/groups/${groupId}/messages`, {
+            headers: authHeaders(),
+          });
+          show('groupOutput', data);
+        } catch (err) { show('groupOutput', err); }
+      }
+
+      window.addEventListener('load', () => {
+        const saved = localStorage.getItem('token');
+        if (saved) tokenInput.value = saved;
+      });
+
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const target = tab.dataset.tab;
+          document.getElementById('auth').classList.add('hidden');
+          document.getElementById('personal').classList.add('hidden');
+          document.getElementById('group').classList.add('hidden');
+          document.getElementById(target).classList.remove('hidden');
         });
-        setToken(data.access_token);
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
-
-    async function loadBots() {
-      try {
-        const data = await request('/bots', { headers: authHeaders() });
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
-
-    async function createConversation() {
-      try {
-        const tags = document.getElementById('convTags').value.trim();
-        const data = await request('/conversations', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({
-            title: document.getElementById('convTitle').value.trim() || null,
-            tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-          }),
-        });
-        show('output', data);
-        listConversations();
-      } catch (err) { show('output', err); }
-    }
-
-    async function listConversations() {
-      try {
-        const data = await request('/conversations', { headers: authHeaders() });
-        const list = document.getElementById('convList');
-        list.innerHTML = '';
-        data.forEach(item => {
-          const div = document.createElement('div');
-          div.textContent = `${item.id} - ${item.title} [${item.tags.map(t => t.name).join(',')}]`;
-          const btn = document.createElement('button');
-          btn.textContent = '选择';
-          btn.onclick = () => document.getElementById('conversationId').value = item.id;
-          div.appendChild(btn);
-          list.appendChild(div);
-        });
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
-
-    async function updateConversation() {
-      try {
-        const id = document.getElementById('conversationId').value.trim();
-        const tags = document.getElementById('convTags').value.trim();
-        const data = await request(`/conversations/${id}`, {
-          method: 'PATCH',
-          headers: authHeaders(),
-          body: JSON.stringify({
-            title: document.getElementById('convTitle').value.trim() || null,
-            tags: tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-          }),
-        });
-        show('output', data);
-        listConversations();
-      } catch (err) { show('output', err); }
-    }
-
-    async function deleteConversation() {
-      try {
-        const id = document.getElementById('conversationId').value.trim();
-        const data = await request(`/conversations/${id}`, {
-          method: 'DELETE',
-          headers: authHeaders(),
-        });
-        show('output', data);
-        listConversations();
-      } catch (err) { show('output', err); }
-    }
-
-    async function sendMessage() {
-      try {
-        const id = document.getElementById('conversationId').value.trim();
-        const data = await request(`/conversations/${id}/messages`, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ content: document.getElementById('message').value.trim() }),
-        });
-        show('messageOutput', data);
-      } catch (err) { show('messageOutput', err); }
-    }
-
-    async function listMessages() {
-      try {
-        const id = document.getElementById('conversationId').value.trim();
-        const data = await request(`/conversations/${id}/messages`, {
-          headers: authHeaders(),
-        });
-        show('messageOutput', data);
-      } catch (err) { show('messageOutput', err); }
-    }
-
-    async function createGroup() {
-      try {
-        const botsRaw = document.getElementById('groupBots').value.trim();
-        const botIds = botsRaw ? botsRaw.split(',').map(v => parseInt(v.trim(), 10)).filter(Number.isFinite) : null;
-        const data = await request('/groups', {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({
-            title: document.getElementById('groupTitle').value.trim(),
-            bot_ids: botIds,
-          }),
-        });
-        show('output', data);
-        listGroups();
-      } catch (err) { show('output', err); }
-    }
-
-    async function listGroups() {
-      try {
-        const data = await request('/groups', { headers: authHeaders() });
-        const list = document.getElementById('groupList');
-        list.innerHTML = '';
-        data.forEach(item => {
-          const div = document.createElement('div');
-          div.textContent = `${item.id} - ${item.title}`;
-          const btn = document.createElement('button');
-          btn.textContent = '选择';
-          btn.onclick = () => document.getElementById('groupId').value = item.id;
-          div.appendChild(btn);
-          list.appendChild(div);
-        });
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
-
-    async function addMember() {
-      try {
-        const groupId = document.getElementById('groupId').value.trim();
-        const data = await request(`/groups/${groupId}/members`, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ username: document.getElementById('memberUsername').value.trim() }),
-        });
-        show('output', data);
-      } catch (err) { show('output', err); }
-    }
-
-    async function sendGroupMessage() {
-      try {
-        const groupId = document.getElementById('groupId').value.trim();
-        const data = await request(`/groups/${groupId}/messages`, {
-          method: 'POST',
-          headers: authHeaders(),
-          body: JSON.stringify({ content: document.getElementById('groupMessage').value.trim() }),
-        });
-        show('groupOutput', data);
-      } catch (err) { show('groupOutput', err); }
-    }
-
-    async function listGroupMessages() {
-      try {
-        const groupId = document.getElementById('groupId').value.trim();
-        const data = await request(`/groups/${groupId}/messages`, {
-          headers: authHeaders(),
-        });
-        show('groupOutput', data);
-      } catch (err) { show('groupOutput', err); }
-    }
-
-    window.addEventListener('load', () => {
-      const saved = localStorage.getItem('token');
-      if (saved) tokenInput.value = saved;
-    });
-  </script>
-</body>
-
+      });
+    </script>
+  </body>
 </html>

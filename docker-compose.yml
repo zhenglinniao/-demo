@@ -8,10 +8,13 @@ services:
       DATABASE_URL: "sqlite:////app/data/app.db"
       JWT_SECRET: "change_me_in_prod"
       JWT_EXPIRES_MINUTES: "120"
-      AI_FAIL_RATE: "0.1"
+      AI_FAIL_RATE: "0.0"
       AI_MAX_RETRIES: "2"
       AI_REPLY_STRATEGY: "all"
       SEED_USERS: "test1:test1234,test2:test1234"
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      OPENAI_BASE_URL: "https://free.v36.cm"
+      OPENAI_MODEL: "gpt-4o-mini"
     volumes:
       - ./data:/app/data
     command: ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,8 +1,9 @@
 fastapi==0.111.0
 uvicorn==0.30.0
-SQLAlchemy>=2.0.35  ## 操作数据库
-pydantic>=2.10.0  ## json解析
-python-jose[cryptography]==3.3.0  ##JWT 登录令牌
-passlib[bcrypt]==1.7.4  ##加密
-bcrypt==3.2.2  
-python-multipart==0.0.9  ##文件上传
+SQLAlchemy==2.0.30
+pydantic==2.6.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+bcrypt==3.2.2
+httpx==0.27.0

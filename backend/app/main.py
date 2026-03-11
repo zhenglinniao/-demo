@@ -1,13 +1,13 @@
 from datetime import datetime
 import random
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from .ai_client import call_ai_api
@@ -33,6 +33,8 @@ from .schemas import (
     ConversationCreate,
     ConversationOut,
     ConversationUpdate,
+    GroupBotOut,
+    GroupBotUpdate,
     GroupCreate,
     GroupDetail,
     GroupMemberAdd,
@@ -62,8 +64,23 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup() -> None:
     Base.metadata.create_all(bind=engine)
+    ensure_schema()
     seed_bots()
     seed_users()
+
+
+def ensure_schema() -> None:
+    if engine.dialect.name != "sqlite":
+        return
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(text("PRAGMA table_info(group_bots)"))
+            cols = {row[1] for row in rows}
+            if "system_prompt" not in cols:
+                conn.execute(text("ALTER TABLE group_bots ADD COLUMN system_prompt TEXT"))
+                conn.commit()
+    except Exception:
+        return
 
 
 def seed_bots() -> None:
@@ -291,8 +308,10 @@ def create_group(
         bot_ids = [bot.id for bot in db.query(Bot).filter(Bot.is_active.is_(True)).all()]
     if not bot_ids:
         raise HTTPException(status_code=400, detail="No bots available")
+
+    bot_systems = payload.bot_systems or {}
     for bot_id in bot_ids:
-        db.add(GroupBot(group_id=group.id, bot_id=bot_id))
+        db.add(GroupBot(group_id=group.id, bot_id=bot_id, system_prompt=bot_systems.get(bot_id)))
 
     db.commit()
     db.refresh(group)
@@ -322,6 +341,60 @@ def get_group_detail(
 ):
     group = _get_group_or_404(db, group_id, current_user.id)
     return _build_group_detail(db, group)
+
+
+@app.get("/groups/{group_id}/bots", response_model=List[GroupBotOut])
+def list_group_bots(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _get_group_or_404(db, group_id, current_user.id)
+    rows: List[Tuple[GroupBot, Bot]] = (
+        db.query(GroupBot, Bot)
+        .join(Bot, Bot.id == GroupBot.bot_id)
+        .filter(GroupBot.group_id == group_id)
+        .order_by(Bot.id.asc())
+        .all()
+    )
+    return [
+        GroupBotOut(
+            bot_id=bot.id,
+            name=bot.name,
+            persona=bot.persona,
+            system_prompt=link.system_prompt,
+        )
+        for link, bot in rows
+    ]
+
+
+@app.patch("/groups/{group_id}/bots/{bot_id}", response_model=GroupBotOut)
+def update_group_bot(
+    group_id: int,
+    bot_id: int,
+    payload: GroupBotUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    group = _get_group_or_404(db, group_id, current_user.id)
+    if group.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only owner can update bots")
+
+    link = (
+        db.query(GroupBot)
+        .filter(GroupBot.group_id == group_id, GroupBot.bot_id == bot_id)
+        .first()
+    )
+    if not link:
+        raise HTTPException(status_code=404, detail="Bot not found in group")
+
+    link.system_prompt = payload.system_prompt
+    db.commit()
+
+    bot = db.query(Bot).filter(Bot.id == bot_id).first()
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    return GroupBotOut(bot_id=bot.id, name=bot.name, persona=bot.persona, system_prompt=link.system_prompt)
 
 
 @app.post("/groups/{group_id}/members")
@@ -397,18 +470,26 @@ def send_group_message(
     bot_messages: List[GroupMessage] = []
     error_message = None
 
-    bots = (
-        db.query(Bot)
-        .join(GroupBot, GroupBot.bot_id == Bot.id)
+    bot_rows: List[Tuple[GroupBot, Bot]] = (
+        db.query(GroupBot, Bot)
+        .join(Bot, Bot.id == GroupBot.bot_id)
         .filter(GroupBot.group_id == group_id, Bot.is_active.is_(True))
         .all()
     )
-    if not bots:
-        bots = db.query(Bot).filter(Bot.name == "FallbackBot").all()
+    if not bot_rows:
+        fallback = db.query(Bot).filter(Bot.name == "FallbackBot").first()
+        if fallback:
+            bot_rows = [(GroupBot(group_id=group_id, bot_id=fallback.id, system_prompt=None), fallback)]
 
-    selected_bots = _select_bots_for_reply(bots)
-    for bot in selected_bots:
-        bot_message, ai_error = _create_group_ai_message(db, group_id, bot, payload.content)
+    selected = _select_bots_for_reply(bot_rows)
+    for link, bot in selected:
+        bot_message, ai_error = _create_group_ai_message(
+            db,
+            group_id,
+            bot,
+            payload.content,
+            system_prompt=link.system_prompt,
+        )
         bot_messages.append(bot_message)
         if ai_error:
             error_message = error_message or ai_error
@@ -551,21 +632,27 @@ def _build_group_detail(db: Session, group: Group) -> GroupDetail:
     )
 
 
-def _select_bots_for_reply(bots: List[Bot]) -> List[Bot]:
-    if not bots:
+def _select_bots_for_reply(rows: List[Tuple[GroupBot, Bot]]) -> List[Tuple[GroupBot, Bot]]:
+    if not rows:
         return []
     strategy = AI_REPLY_STRATEGY.lower()
     if strategy == "random":
-        return [random.choice(bots)]
-    return bots
+        return [random.choice(rows)]
+    return rows
 
 
-def _create_group_ai_message(db: Session, group_id: int, bot: Bot, prompt: str) -> tuple[GroupMessage, str | None]:
+def _create_group_ai_message(
+    db: Session,
+    group_id: int,
+    bot: Bot,
+    prompt: str,
+    system_prompt: str | None = None,
+) -> tuple[GroupMessage, str | None]:
     attempts = 0
     error_message = None
     while attempts <= AI_MAX_RETRIES:
         try:
-            response = call_ai_api(prompt, persona=bot.persona)
+            response = call_ai_api(prompt, persona=bot.persona, system_prompt=system_prompt)
             msg = GroupMessage(
                 group_id=group_id,
                 sender_type="bot",
@@ -591,4 +678,3 @@ def _create_group_ai_message(db: Session, group_id: int, bot: Bot, prompt: str) 
     db.add(msg)
     db.flush()
     return msg, error_message
-

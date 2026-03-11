@@ -124,6 +124,7 @@ class GroupBot(Base):
 
     group_id = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True)
     bot_id = Column(Integer, ForeignKey("bots.id", ondelete="CASCADE"), primary_key=True)
+    system_prompt = Column(Text)
 
     group = relationship("Group", back_populates="bots")
     bot = relationship("Bot", back_populates="groups")
