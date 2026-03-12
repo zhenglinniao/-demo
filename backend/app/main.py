@@ -49,7 +49,7 @@ from .schemas import (
     UserLogin,
 )
 
-app = FastAPI(title="Chat Backend", version="0.1.0")
+app = FastAPI(title="机器人聊天页面", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,

@@ -6,6 +6,8 @@
 ## 技术选型
 - Python 3.11
 - FastAPI 0.111.0
+- Next.js: 15.0.3
+- React: 18.3.1
 - SQLAlchemy 2.0
 - SQLite（默认）
 - JWT 认证（python-jose）
@@ -25,15 +27,22 @@
 
 ## 本地启动
 1. 创建虚拟环境并安装依赖：
-   - `python -m venv .venv`
+   - `python3.11 -m venv .venv`
    - `./.venv/Scripts/activate`
    - `pip install -r backend/requirements.txt`
 2. 启动服务：
    - `uvicorn backend.app.main:app --reload`
 3. 打开页面：
-   - `http://127.0.0.1:8000/` # 访问前端页面
+   - `http://127.0.0.1:3000/` # 访问前端页面
 4. 打开 API 文档：
    - `http://127.0.0.1:8000/docs` # 访问Swagger UI API文档页面
+
+5. 前端安装运行
+   - `cd frontend`  #访问目录
+   - `npm install`  #安装依赖
+   -  `npm run dev`  #运行前端代码
+6. 打开前端页面
+   - ` http://localhost:3000`
 
 默认数据库文件生成在 `backend/app.db`。 # SQLite数据库文件默认位置
 
@@ -90,7 +99,7 @@
 
 ## 关键设计说明
 ### 对话标签
-标签按用户隔离存储，使用 `(user_id, name)` 唯一约束，通过关联表实现多对多关系。标签筛选采用 `HAVING COUNT(DISTINCT tag)`，确保对话同时包含所有指定标签。
+标签按用户隔离存储，使用 `(user_id, name)` 唯一约束，通过关联表实现多对多关系。
 
 
 
@@ -109,7 +118,7 @@
 
 ## 配置
 - `DATABASE_URL`：默认 `sqlite:///./app.db`
-- `JWT_SECRET`：默认 `dev_secret_change_me`
+- `JWT_SECRET`：默认 `dev_secret_password`
 - `JWT_EXPIRES_MINUTES`：默认 `120` // JWT令牌的有效期，单位为分钟，默认为2小时
 - `AI_MAX_RETRIES`：默认 `2`
 - `AI_REPLY_STRATEGY`：`all` 或 `random`

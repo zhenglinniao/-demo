@@ -84,19 +84,19 @@ export default function Page() {
 
   useEffect(() => {
     if (!token) return;
-    listConversations(token, tagFilter || undefined).then(setConversations).catch(() => {});
-    listGroups(token).then(setGroups).catch(() => {});
+    listConversations(token, tagFilter || undefined).then(setConversations).catch(() => { });
+    listGroups(token).then(setGroups).catch(() => { });
   }, [token, tagFilter]);
 
   useEffect(() => {
     if (!token || !activeConversation) return;
-    listMessages(token, activeConversation.id).then(setMessages).catch(() => {});
+    listMessages(token, activeConversation.id).then(setMessages).catch(() => { });
   }, [token, activeConversation]);
 
   useEffect(() => {
     if (!token || !activeGroupId) return;
-    listGroupMessages(token, activeGroupId).then(setGroupMessages).catch(() => {});
-    listGroupBots(token, activeGroupId).then(setGroupBots).catch(() => {});
+    listGroupMessages(token, activeGroupId).then(setGroupMessages).catch(() => { });
+    listGroupBots(token, activeGroupId).then(setGroupBots).catch(() => { });
   }, [token, activeGroupId]);
 
   const tagCloud = useMemo(() => {
@@ -233,8 +233,8 @@ export default function Page() {
       <div className="mx-auto max-w-6xl px-6 py-8">
         <header className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold">Minimal Chat</h1>
-            <p className="text-sm text-muted">极简但完整的对话系统</p>
+            <h1 className="text-2xl font-semibold">bot Chat</h1>
+            <p className="text-sm text-muted">在线聊天应用mini</p>
           </div>
           {token && (
             <button
