@@ -3,6 +3,7 @@ cat > .gitignore << 'EOF'
 node_modules/
 .next/
 .env.local
+.env
 
 # Python
 __pycache__/

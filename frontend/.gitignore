@@ -3,3 +3,5 @@ node_modules/
 .venv/
 __pycache__/
 *.pyc
+# Next.js 构建产物
+.next/
