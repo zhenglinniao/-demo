@@ -1,0 +1,26 @@
+
+cat > .gitignore << EOF
+# 前端
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.local
+
+# Python
+__pycache__/
+.venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# 系统
+.DS_Store
+.idea/
+.vscode/
+*.swp
+EOF
