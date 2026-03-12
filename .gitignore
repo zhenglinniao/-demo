@@ -2,7 +2,6 @@ cat > .gitignore << 'EOF'
 # Next.js
 node_modules/
 .next/
-.env
 .env.local
 
 # Python
