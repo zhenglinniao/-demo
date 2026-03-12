@@ -1,5 +1,4 @@
 
-cat > .gitignore << EOF
 # 前端
 node_modules/
 .next/
