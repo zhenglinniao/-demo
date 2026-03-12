@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from .ai_client import call_ai_api
 from .auth import create_access_token, get_current_user, get_db, hash_password, verify_password
-from .config import AI_MAX_RETRIES, AI_REPLY_STRATEGY, SEED_USERS
+from .config import AI_MAX_GROUP_BOT_RESPONSES, AI_MAX_RETRIES, AI_REPLY_STRATEGY, SEED_USERS
 from .database import engine
 from .models import (
     Base,
@@ -457,7 +457,7 @@ def send_group_message(
         if fallback:
             bot_rows = [(GroupBot(group_id=group_id, bot_id=fallback.id, system_prompt=None), fallback)]
 
-    selected = _select_bots_for_reply(bot_rows)
+    selected = _select_bots_for_reply(bot_rows, payload.content)
     for link, bot in selected:
         bot_message, ai_error = _create_group_ai_message(
             db,
@@ -619,14 +619,42 @@ def _build_group_detail(db: Session, group: Group) -> GroupDetail:
     )
 
 
-def _select_bots_for_reply(rows: List[Tuple[GroupBot, Bot]]) -> List[Tuple[GroupBot, Bot]]:
+def _select_bots_for_reply(rows: List[Tuple[GroupBot, Bot]], content: str) -> List[Tuple[GroupBot, Bot]]:
     if not rows:
         return []
     strategy = AI_REPLY_STRATEGY.lower()
     if strategy == "random":
         import random
         return [random.choice(rows)]
-    return rows
+
+    text = (content or "").lower()
+    tech_keys = ["bug", "error", "exception", "api", "db", "database", "deploy", "log", "code", "config", "install", "报错", "代码", "接口", "数据库", "部署", "日志", "配置", "依赖", "安装"]
+    support_keys = ["account", "login", "register", "password", "refund", "pay", "order", "help", "support", "账号", "登录", "注册", "密码", "退款", "支付", "订单", "帮助", "客服"]
+    fun_keys = ["joke", "funny", "humor", "fun", "laugh", "笑话", "段子", "幽默", "搞笑", "有趣"]
+
+    scored: List[Tuple[int, Tuple[GroupBot, Bot]]] = []
+    for link, bot in rows:
+        label = f"{bot.name} {bot.persona}".lower()
+        score = 0
+        if bot.name and bot.name.lower() in text:
+            score += 3
+        if any(k in label for k in ["tech", "技术", "developer", "工程", "开发"]) and any(k in text for k in tech_keys):
+            score += 2
+        if any(k in label for k in ["support", "service", "customer", "客服", "售后"]) and any(k in text for k in support_keys):
+            score += 2
+        if any(k in label for k in ["fun", "humor", "joke", "幽默", "搞笑", "段子"]) and any(k in text for k in fun_keys):
+            score += 2
+        scored.append((score, (link, bot)))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    max_score = scored[0][0] if scored else 0
+    if max_score <= 0:
+        import random
+        return [random.choice(rows)]
+
+    limit = max(1, min(AI_MAX_GROUP_BOT_RESPONSES, len(rows)))
+    picked = [pair for score, pair in scored if score > 0][:limit]
+    return picked
 
 
 def _create_group_ai_message(
@@ -666,3 +694,7 @@ def _create_group_ai_message(
     db.add(msg)
     db.flush()
     return msg, error_message
+
+
+
+

@@ -33,8 +33,11 @@ def verify_password(password: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str) -> str:
+# 计算JWT的过期时间，使用当前UTC时间加上指定的分钟数
     expire = datetime.utcnow() + timedelta(minutes=JWT_EXPIRES_MINUTES)
+# 创建JWT的payload，包含主题(sub)和过期时间(exp)
     payload = {"sub": subject, "exp": expire}
+# 使用密钥和算法对payload进行编码，生成JWT令牌
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 

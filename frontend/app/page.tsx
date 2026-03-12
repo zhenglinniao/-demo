@@ -1,5 +1,4 @@
-﻿
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -7,7 +6,7 @@ import {
   createConversation,
   createGroup,
   deleteConversation,
-  listBots,
+  deleteGroup,
   listConversations,
   listGroupBots,
   listGroupMessages,
@@ -18,9 +17,10 @@ import {
   sendGroupMessage,
   sendMessage,
   updateConversation,
+  updateGroup,
 } from "@/lib/api";
-import { Bot, Conversation, GroupBot, Message } from "@/lib/types";
-import { Edit2, Plus, Trash2, Users } from "lucide-react";
+import { BotCreate, Conversation, GroupBot, Message } from "@/lib/types";
+import { Edit2, Plus, Trash2, Users, X } from "lucide-react";
 
 const retry = async <T,>(fn: () => Promise<T>, times = 2): Promise<T> => {
   let lastErr: any;
@@ -48,24 +48,34 @@ export default function Page() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [authForm, setAuthForm] = useState({ username: "", password: "" });
   const [authError, setAuthError] = useState<string | null>(null);
+
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [groups, setGroups] = useState<{ id: number; title: string }[]>([]);
-  const [bots, setBots] = useState<Bot[]>([]);
   const [groupBots, setGroupBots] = useState<GroupBot[]>([]);
+
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [groupMessages, setGroupMessages] = useState<Message[]>([]);
+
   const [tagFilter, setTagFilter] = useState("");
   const [convTitle, setConvTitle] = useState("");
-  const [convTags, setConvTags] = useState("");
+  const [convTags, setConvTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+
   const [input, setInput] = useState("");
   const [groupInput, setGroupInput] = useState("");
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState("");
-  const [groupBotIds, setGroupBotIds] = useState<number[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [customBots, setCustomBots] = useState<BotCreate[]>([
+    { name: "客服机器人", persona: "负责用户支持" },
+    { name: "技术机器人", persona: "负责技术解答" },
+    { name: "幽默机器人", persona: "负责轻松幽默" },
+  ]);
 
   useEffect(() => {
     const stored = localStorage.getItem("token");
@@ -74,22 +84,19 @@ export default function Page() {
 
   useEffect(() => {
     if (!token) return;
-    listConversations(token, tagFilter || undefined)
-      .then(setConversations)
-      .catch(() => { });
-    listGroups(token).then(setGroups).catch(() => { });
-    listBots(token).then(setBots).catch(() => { });
+    listConversations(token, tagFilter || undefined).then(setConversations).catch(() => {});
+    listGroups(token).then(setGroups).catch(() => {});
   }, [token, tagFilter]);
 
   useEffect(() => {
     if (!token || !activeConversation) return;
-    listMessages(token, activeConversation.id).then(setMessages).catch(() => { });
+    listMessages(token, activeConversation.id).then(setMessages).catch(() => {});
   }, [token, activeConversation]);
 
   useEffect(() => {
     if (!token || !activeGroupId) return;
-    listGroupMessages(token, activeGroupId).then(setGroupMessages).catch(() => { });
-    listGroupBots(token, activeGroupId).then(setGroupBots).catch(() => { });
+    listGroupMessages(token, activeGroupId).then(setGroupMessages).catch(() => {});
+    listGroupBots(token, activeGroupId).then(setGroupBots).catch(() => {});
   }, [token, activeGroupId]);
 
   const tagCloud = useMemo(() => {
@@ -98,6 +105,10 @@ export default function Page() {
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   }, [conversations]);
 
+  const activeGroup = useMemo(
+    () => (activeGroupId ? groups.find((g) => g.id === activeGroupId) ?? null : null),
+    [groups, activeGroupId]
+  );
   const groupedMessages = useMemo(() => groupByDate(messages), [messages]);
   const groupedGroupMessages = useMemo(() => groupByDate(groupMessages), [groupMessages]);
   const groupBotMap = useMemo(() => new Map(groupBots.map((b) => [b.bot_id, b])), [groupBots]);
@@ -109,21 +120,14 @@ export default function Page() {
       const data = await fn(authForm.username, authForm.password);
       localStorage.setItem("token", data.access_token);
       setToken(data.access_token);
-    } catch (err: any) {
+    } catch {
       setAuthError("登录失败，请确认后端已启动并检查用户名/密码。");
     }
   };
 
   const handleCreateConversation = async () => {
     if (!token) return;
-    const created = await createConversation(
-      token,
-      convTitle || undefined,
-      convTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean)
-    );
+    const created = await createConversation(token, convTitle || undefined, convTags);
     setConversations((prev) => [created, ...prev]);
     setActiveConversation(created);
   };
@@ -132,10 +136,7 @@ export default function Page() {
     if (!token || !activeConversation) return;
     const updated = await updateConversation(token, activeConversation.id, {
       title: convTitle || null,
-      tags: convTags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: convTags,
     });
     setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
     setActiveConversation(updated);
@@ -201,16 +202,30 @@ export default function Page() {
 
   const handleCreateGroup = async () => {
     if (!token) return;
-    const created = await createGroup(token, { title: groupTitle, bot_ids: groupBotIds });
+    const created = await createGroup(token, { title: groupTitle, bots: customBots });
     setGroups((prev) => [created, ...prev]);
     setGroupTitle("");
-    setGroupBotIds([]);
     setGroupModalOpen(false);
+    setActiveGroupId(created.id);
+    setActiveConversation(null);
   };
 
-  const handleAddMember = async (username: string) => {
-    if (!token || !activeGroupId || !username) return;
-    await addGroupMember(token, activeGroupId, username);
+  const handleUpdateGroup = async (id: number) => {
+    if (!token) return;
+    const next = window.prompt("输入新的群组名称");
+    if (!next) return;
+    const updated = await updateGroup(token, id, next);
+    setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
+  const handleDeleteGroup = async (id: number) => {
+    if (!token) return;
+    await deleteGroup(token, id);
+    setGroups((prev) => prev.filter((g) => g.id !== id));
+    if (activeGroupId === id) {
+      setActiveGroupId(null);
+      setGroupMessages([]);
+    }
   };
 
   return (
@@ -293,11 +308,14 @@ export default function Page() {
                     <button
                       key={tag.name}
                       className={`rounded-full border px-3 py-1 text-xs ${tagFilter === tag.name ? "border-bubbleUser text-bubbleUser" : "border-border"}`}
-                      onClick={() => setTagFilter(tag.name)}
+                      onClick={() => setTagFilter(tagFilter === tag.name ? "" : tag.name)}
                     >
                       {tag.name} ({tag.count})
                     </button>
                   ))}
+                  {tagFilter && (
+                    <button className="rounded-full border px-3 py-1 text-xs" onClick={() => setTagFilter("")}>清除</button>
+                  )}
                 </div>
               </div>
 
@@ -313,7 +331,7 @@ export default function Page() {
                             setActiveConversation(conv);
                             setActiveGroupId(null);
                             setConvTitle(conv.title);
-                            setConvTags(conv.tags.map((t) => t.name).join(","));
+                            setConvTags(conv.tags.map((t) => t.name));
                           }}
                         >
                           {conv.title}
@@ -336,16 +354,27 @@ export default function Page() {
                 <div className="text-xs font-semibold text-muted">群组对话</div>
                 <div className="mt-2 space-y-2">
                   {groups.map((group) => (
-                    <button
-                      key={group.id}
-                      className="flex w-full items-center gap-2 rounded-xl border border-border px-3 py-2 text-left text-sm"
-                      onClick={() => {
-                        setActiveGroupId(group.id);
-                        setActiveConversation(null);
-                      }}
-                    >
-                      <Users size={14} /> {group.title}
-                    </button>
+                    <div key={group.id} className="rounded-xl border border-border p-2">
+                      <div className="flex items-center justify-between">
+                        <button
+                          className="text-left text-sm"
+                          onClick={() => {
+                            setActiveGroupId(group.id);
+                            setActiveConversation(null);
+                          }}
+                        >
+                          {group.title}
+                        </button>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleDeleteGroup(group.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                          <button onClick={() => handleUpdateGroup(group.id)}>
+                            <Edit2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -354,25 +383,52 @@ export default function Page() {
             <main className="rounded-xl border border-border bg-white p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <input
-                    className="text-xl font-semibold outline-none"
-                    value={activeConversation?.title || "未选择对话"}
-                    onChange={(e) => setConvTitle(e.target.value)}
-                    onBlur={handleUpdateConversation}
-                    disabled={!activeConversation}
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {(activeConversation?.tags || []).map((t) => (
-                      <span key={t.id} className="rounded-full border border-border px-3 py-1 text-xs">
-                        {t.name}
-                      </span>
-                    ))}
-                    {activeConversation && (
-                      <button className="rounded-full border border-border px-3 py-1 text-xs" onClick={handleUpdateConversation}>
-                        + 添加标签
-                      </button>
-                    )}
-                  </div>
+                  {activeGroupId ? (
+                    <button className="text-xl font-semibold" onClick={() => activeGroup && handleUpdateGroup(activeGroup.id)}>
+                      {activeGroup?.title || "群组对话"}
+                    </button>
+                  ) : (
+                    <input
+                      className="text-xl font-semibold outline-none"
+                      value={convTitle}
+                      onChange={(e) => setConvTitle(e.target.value)}
+                      onBlur={handleUpdateConversation}
+                      disabled={!activeConversation}
+                    />
+                  )}
+                  {activeConversation && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {convTags.map((t) => (
+                        <span key={t} className="flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs">
+                          {t}
+                          <button onClick={() => setConvTags((prev) => prev.filter((tag) => tag !== t))}>
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                      <div className="flex gap-2">
+                        <input
+                          className="rounded-full border border-border px-3 py-1 text-xs"
+                          placeholder="添加标签"
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                        />
+                        <button
+                          className="rounded-full border border-border px-3 py-1 text-xs"
+                          onClick={() => {
+                            if (!newTag.trim()) return;
+                            setConvTags((prev) => [...prev, newTag.trim()]);
+                            setNewTag("");
+                          }}
+                        >
+                          +
+                        </button>
+                        <button className="rounded-full border border-border px-3 py-1 text-xs" onClick={handleUpdateConversation}>
+                          保存
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -406,7 +462,7 @@ export default function Page() {
                           return (
                             <div key={m.id} className={`flex ${m.sender_type === "user" ? "justify-end" : "justify-start"}`}>
                               <div className="max-w-[70%]">
-                                {bot && <div className="mb-1 text-xs text-muted">{bot.name} · {bot.persona}</div>}
+                                {bot && <div className="mb-1 text-xs text-muted">{bot.name}</div>}
                                 <div
                                   className={`chat-bubble ${m.sender_type === "user" ? "bg-bubbleUser text-white" : "bg-bubbleBot text-text"}`}
                                 >
@@ -464,24 +520,47 @@ export default function Page() {
               onChange={(e) => setGroupTitle(e.target.value)}
             />
             <div className="mt-4">
-              <div className="text-sm text-muted">选择机器人角色</div>
+              <div className="text-sm text-muted">自定义机器人角色</div>
               <div className="mt-2 space-y-2">
-                {bots
-                  .filter((b) => ["CustomerBot", "TechBot", "HumorBot"].includes(b.name))
-                  .map((bot) => (
-                    <label key={bot.id} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={groupBotIds.includes(bot.id)}
-                        onChange={(e) => {
-                          setGroupBotIds((prev) =>
-                            e.target.checked ? [...prev, bot.id] : prev.filter((id) => id !== bot.id)
-                          );
-                        }}
-                      />
-                      {bot.name}
-                    </label>
-                  ))}
+                {customBots.map((bot, idx) => (
+                  <div key={idx} className="rounded-xl border border-border p-3">
+                    <div className="flex items-center justify-between text-xs text-muted">
+                      <span>机器人 {idx + 1}</span>
+                      <button
+                        onClick={() => setCustomBots((prev) => prev.filter((_, i) => i !== idx))}
+                        className="text-danger"
+                      >
+                        删除
+                      </button>
+                    </div>
+                    <input
+                      className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"
+                      placeholder="机器人角色名称"
+                      value={bot.name}
+                      onChange={(e) =>
+                        setCustomBots((prev) =>
+                          prev.map((b, i) => (i === idx ? { ...b, name: e.target.value } : b))
+                        )
+                      }
+                    />
+                    <input
+                      className="mt-2 w-full rounded-xl border border-border px-3 py-2 text-sm"
+                      placeholder="机器人设定描述"
+                      value={bot.persona}
+                      onChange={(e) =>
+                        setCustomBots((prev) =>
+                          prev.map((b, i) => (i === idx ? { ...b, persona: e.target.value } : b))
+                        )
+                      }
+                    />
+                  </div>
+                ))}
+                <button
+                  className="rounded-xl border border-border px-3 py-2 text-sm"
+                  onClick={() => setCustomBots((prev) => [...prev, { name: "新机器人", persona: "" }])}
+                >
+                  + 添加机器人
+                </button>
               </div>
             </div>
             <div className="mt-4 flex justify-end gap-2">
