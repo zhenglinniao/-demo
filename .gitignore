@@ -1,9 +1,7 @@
-
-# 前端
+cat > .gitignore << 'EOF'
+# Next.js
 node_modules/
 .next/
-dist/
-build/
 .env
 .env.local
 
@@ -12,14 +10,9 @@ __pycache__/
 .venv/
 *.pyc
 *.pyo
-*.pyd
-.Python
-env/
-venv/
 
 # 系统
 .DS_Store
-.idea/
-.vscode/
-*.swp
-EOF
+.idea
+.vscode
+EOF      
